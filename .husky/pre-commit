@@ -1,0 +1,35 @@
+FILES_TS=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^ignition/modules/.*\.ts$|^test/.*\.ts$' || true)
+FILES_SOL=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^contracts/.*\.sol$' || true)
+
+if [ -z "$FILES_TS" ] && [ -z "$FILES_SOL" ]; then
+  echo "Nessun file TypeScript o Solidity modificato staged, salto pre-commit."
+  exit 0
+fi
+
+if [ -n "$FILES_TS" ]; then
+  echo "Formattazione Prettier e linting TypeScript su:"
+  echo "$FILES_TS"
+
+  npx prettier --write $FILES_TS
+
+  git add $FILES_TS
+
+  npx eslint $FILES_TS
+  if [ $? -ne 0 ]; then
+    echo "Errore ESLint, commit bloccato."
+    exit 1
+  fi
+fi
+
+if [ -n "$FILES_SOL" ]; then
+  echo "Linting Solidity con Solhint su:"
+  echo "$FILES_SOL"
+
+  npx solhint $FILES_SOL
+  if [ $? -ne 0 ]; then
+    echo "Errore Solhint, commit bloccato."
+    exit 1
+  fi
+fi
+
+exit 0
