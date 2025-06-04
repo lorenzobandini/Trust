@@ -126,6 +126,7 @@ contract ExpenseManager {
     function settleDebt(uint32 groupId, address creditor, uint256 amount) external {
         require(groupManager.isGroupMember(groupId, msg.sender), "Not a group member");
         require(groupManager.isGroupMember(groupId, creditor), "Creditor not in group");
+        require(msg.sender != creditor, "Cannot settle debt with yourself");
         require(amount > 0, "Amount must be greater than 0");
         require(debts[groupId][msg.sender][creditor] >= amount, "Insufficient debt balance");
         
