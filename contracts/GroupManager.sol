@@ -13,7 +13,7 @@ pragma solidity ^0.8.24;
  */
 contract GroupManager {
     // Maximum number of members allowed in a group
-    uint256 public constant MAX_GROUP_SIZE = 50;
+    uint16 public constant MAX_GROUP_SIZE = 50;
     
     // Structure to store group information
     struct Group {
@@ -24,17 +24,17 @@ contract GroupManager {
     }
     
     // Mapping from group ID to Group struct
-    mapping(uint256 => Group) public groups;
+    mapping(uint32 => Group) public groups;
     
     // Counter for group IDs
-    uint256 private _groupIdCounter;
+    uint32 private _groupIdCounter;
     
     // Mapping to track if an address is a member of a group
-    mapping(uint256 => mapping(address => bool)) public isGroupMember;
+    mapping(uint32 => mapping(address => bool)) public isGroupMember;
 
     // Events
-    event GroupCreated(uint256 indexed groupId, string name, address creator);
-    event MemberJoined(uint256 indexed groupId, address member);
+    event GroupCreated(uint32 indexed groupId, string name, address creator);
+    event MemberJoined(uint32 indexed groupId, address member);
     
     /**
      * @notice Creates a new group with the given name and initial members
@@ -42,12 +42,12 @@ contract GroupManager {
      * @param initialMembers Array of addresses to be added as initial members
      * @return groupId The ID of the newly created group
      */
-    function createGroup(string memory name, address[] memory initialMembers) external returns (uint256) {
+    function createGroup(string memory name, address[] memory initialMembers) external returns (uint32) {
         require(bytes(name).length > 0, "Group name cannot be empty");
         require(bytes(name).length <= 32, "Group name too long");
         require(initialMembers.length < MAX_GROUP_SIZE, "Too many initial members");
         
-        uint256 groupId = _groupIdCounter++;
+        uint32 groupId = _groupIdCounter++;
         
         // Create new group
         Group storage newGroup = groups[groupId];
@@ -59,7 +59,7 @@ contract GroupManager {
         newGroup.members.push(msg.sender);
         isGroupMember[groupId][msg.sender] = true;
 
-        // Add initial members, uint8 because we know the length is less than 50
+        // Add initial members
         for (uint8 i = 0; i < initialMembers.length; i++) {
             address member = initialMembers[i];
             require(member != address(0), "Invalid member address");
@@ -78,7 +78,7 @@ contract GroupManager {
      * @notice Allows a user to join an existing group
      * @param groupId The ID of the group to join
      */
-    function joinGroup(uint256 groupId) external {
+    function joinGroup(uint32 groupId) external {
         Group storage group = groups[groupId];
         require(group.exists, "Group does not exist");
         require(!isGroupMember[groupId][msg.sender], "Already a member");
@@ -95,7 +95,7 @@ contract GroupManager {
      * @param groupId The ID of the group
      * @return Array of member addresses
      */
-    function getGroupMembers(uint256 groupId) external view returns (address[] memory) {
+    function getGroupMembers(uint32 groupId) external view returns (address[] memory) {
         require(groups[groupId].exists, "Group does not exist");
         return groups[groupId].members;
     }
@@ -104,7 +104,7 @@ contract GroupManager {
      * @notice Returns the total number of groups created
      * @return The number of groups
      */
-    function getGroupCount() external view returns (uint256) {
+    function getGroupCount() external view returns (uint32) {
         return _groupIdCounter;
     }
 

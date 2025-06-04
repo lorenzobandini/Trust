@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+// TODO: TO ALL CONTRACTS use custom errors instead of require statements for better gas efficiency and clarity
+
 /**
  * @title TrustToken
  * @author Lorenzo Bandini
@@ -17,10 +19,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract TrustToken is ERC20, Ownable {
     // Rate of tokens per Ether (1 ETH = 1000 TRUST tokens)
     // TODO: Synchronize the change with the actual value of Ether
-    uint256 public constant MINT_RATE = 1000;
+    uint16 public constant MINT_RATE = 1000;
     
     // Event emitted when tokens are minted
-    event TokensMinted(address indexed to, uint256 amount, uint256 ethAmount);
+    event TokensMinted(address indexed to, uint128 amount, uint128 ethAmount);
     
     constructor() ERC20("TRUST Token", "TRUST") Ownable(msg.sender) {}
     
@@ -31,10 +33,13 @@ contract TrustToken is ERC20, Ownable {
     function mint() external payable {
         require(msg.value > 0, "Must send Ether to mint tokens");
         
-        uint256 tokenAmount = msg.value * MINT_RATE;
+        uint256 tokenAmountFull = msg.value * MINT_RATE;
+        require(tokenAmountFull <= type(uint128).max, "Mint amount exceeds maximum limit");
+        uint128 tokenAmount = uint128(tokenAmountFull);
+        
         _mint(msg.sender, tokenAmount);
         
-        emit TokensMinted(msg.sender, tokenAmount, msg.value);
+        emit TokensMinted(msg.sender, tokenAmount, uint128(msg.value));
     }
     
     /**
@@ -42,9 +47,11 @@ contract TrustToken is ERC20, Ownable {
      */
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
-        require(balance > 0, "No Ether to withdraw");
+        require(balance <= type(uint128).max, "Balance exceeds maximum limit");
+        uint128 safeBalance = uint128(balance);
+        require(safeBalance > 0, "No Ether to withdraw");
         
-        (bool success, ) = owner().call{value: balance}("");
+        (bool success, ) = owner().call{value: safeBalance}("");
         require(success, "Withdrawal failed");
     }
 
