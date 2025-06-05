@@ -297,52 +297,51 @@ describe('ExpenseManager', function () {
         )
       ).to.be.revertedWithCustomError(trustToken, 'ERC20InsufficientAllowance');
     });
-  });
+    /**
+     * @notice Ensures that settling debt fails when trying to settle debt with oneself
+     */
+    it('should fail when payer tries to settle debt with himself', async function () {
+      const { expenseManager, groupManager, trustToken, owner, alice, bob } =
+        await loadFixture(deployContractsSetup);
+      const groupId = await createGroupWithMembers(groupManager, owner, [
+        alice,
+        bob,
+      ]);
 
-  /**
-   * @notice Ensures that settling debt fails when trying to settle debt with oneself
-   */
-  it('should fail when payer tries to settle debt with himself', async function () {
-    const { expenseManager, groupManager, trustToken, owner, alice, bob } =
-      await loadFixture(deployContractsSetup);
-    const groupId = await createGroupWithMembers(groupManager, owner, [
-      alice,
-      bob,
-    ]);
-
-    // Add expense where alice is the payer instead of owner
-    const amount = ethers.parseEther('60');
-    const participants = [owner.address, alice.address, bob.address];
-    await addExpense(
-      expenseManager,
-      alice,
-      groupId,
-      amount,
-      'Lunch',
-      SplitMethod.EQUAL,
-      participants,
-      []
-    );
-
-    // Mint and approve tokens for alice
-    await mintTokens(trustToken, alice, ethers.parseEther('20'));
-    await approveTokens(
-      trustToken,
-      alice,
-      expenseManager.target.toString(),
-      ethers.parseEther('20')
-    );
-
-    // Try to settle debt with herself
-    await expect(
-      settleDebt(
+      // Add expense where alice is the payer instead of owner
+      const amount = ethers.parseEther('60');
+      const participants = [owner.address, alice.address, bob.address];
+      await addExpense(
         expenseManager,
         alice,
         groupId,
-        alice.address.toString(),
+        amount,
+        'Lunch',
+        SplitMethod.EQUAL,
+        participants,
+        []
+      );
+
+      // Mint and approve tokens for alice
+      await mintTokens(trustToken, alice, ethers.parseEther('20'));
+      await approveTokens(
+        trustToken,
+        alice,
+        expenseManager.target.toString(),
         ethers.parseEther('20')
-      )
-    ).to.be.revertedWith('Cannot settle debt with yourself');
+      );
+
+      // Try to settle debt with herself
+      await expect(
+        settleDebt(
+          expenseManager,
+          alice,
+          groupId,
+          alice.address.toString(),
+          ethers.parseEther('20')
+        )
+      ).to.be.revertedWith('Cannot settle debt with yourself');
+    });
   });
 
   describe('Debt Information', function () {
