@@ -13,7 +13,8 @@
     "lint:ts": "eslint 'ignition/modules/**/*.ts' 'test/**/*.ts'",
     "lint:sol": "solhint 'contracts/**/*.sol'",
     "format": "prettier --write 'ignition/modules/**/*.ts' 'test/**/*.ts'",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:gas": "REPORT_GAS=true hardhat test"
   },
   "keywords": [],
   "author": "",
@@ -35,6 +36,7 @@
     "eslint-plugin-prettier": "^5.4.0",
     "ethers": "^6.14.3",
     "hardhat": "^2.24.2",
+    "hardhat-gas-reporter": "^2.2.1",
     "husky": "^9.1.7",
     "prettier": "^3.5.3",
     "solhint": "^5.1.0",
