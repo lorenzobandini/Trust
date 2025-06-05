@@ -79,12 +79,26 @@ export async function createGroupWithMembers(
   _owner: SignerWithAddress,
   members: SignerWithAddress[]
 ): Promise<number> {
-  // TODO: don't use a test group with a fixed id but use the one returned by the contract with its id
-  await groupManager.createGroup(
+  // Send the transaction to create a new group
+  const tx = await groupManager.connect(_owner).createGroup(
     'Test Group',
     members.map((m) => m.address)
   );
-  return 0;
+
+  // Wait for the transaction to be confirmed and get the receipt
+  const receipt = await tx.wait();
+
+  // Look for the GroupCreated event in the transaction logs
+  const groupCreatedEvent = receipt?.logs.find((log) => {
+    const parsed = groupManager.interface.parseLog(log);
+    return parsed?.name === 'GroupCreated';
+  });
+
+  // Parse the event to extract the group ID
+  const parsed = groupManager.interface.parseLog(groupCreatedEvent!);
+
+  // Return the group ID from the first argument of the event
+  return Number(parsed?.args[0]);
 }
 
 /**
