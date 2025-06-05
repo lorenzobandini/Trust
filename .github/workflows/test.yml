@@ -19,23 +19,18 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
       - name: Install dependencies
-        run: pnpm install
+        run: npm install
 
       - name: Compile contracts
-        run: pnpm run compile
+        run: npm run compile
 
       - name: Check code formatting
-        run: pnpm run format --check
+        run: npm run format -- --check
 
       - name: Run tests
-        run: pnpm test
+        run: npm test
 
       - name: Generate coverage report
-        run: pnpm run test:coverage
+        run: npm run test:coverage
         if: success()
