@@ -1,3 +1,13 @@
+echo "Eseguendo i test prima del commit"
+pnpm test
+
+if [ $? -ne 0 ]; then
+  echo "I test sono falliti. Commit bloccato."
+  exit 1
+fi
+
+echo "Tutti i test sono passati. Procedo con il commit."
+
 FILES_TS=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^ignition/modules/.*\.ts$|^test/.*\.ts$' || true)
 FILES_SOL=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^contracts/.*\.sol$' || true)
 
