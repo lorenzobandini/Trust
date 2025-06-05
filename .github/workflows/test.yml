@@ -28,9 +28,5 @@ jobs:
       - name: Check code formatting
         run: npm run format -- --check
 
-      - name: Run tests
-        run: npm test
-
       - name: Generate coverage report
         run: npm run test:coverage
-        if: success()
