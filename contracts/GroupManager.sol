@@ -10,10 +10,20 @@ pragma solidity ^0.8.24;
  * Functionalities:
  * - Group creation: allows a user to create a new group with an initial list of members.
  * - Group joining: users can join existing groups if not already members and within size limits.
+ * - Group leaving: allows users to leave groups if all their debts are settled.
+ * - Group deletion: allows group creators to delete groups if all debts are settled.
  */
+
+interface IExpenseManager {
+    function getDebt(uint32 groupId, address debtor, address creditor) external view returns (uint256);
+}
+
 contract GroupManager {
     // Maximum number of members allowed in a group
     uint16 public constant MAX_GROUP_SIZE = 50;
+    
+    // Reference to the ExpenseManager contract
+    IExpenseManager public expenseManager;
     
     // Structure to store group information
     struct Group {
@@ -35,6 +45,18 @@ contract GroupManager {
     // Events
     event GroupCreated(uint32 indexed groupId, string name, address creator);
     event MemberJoined(uint32 indexed groupId, address member);
+    event MemberLeft(uint32 indexed groupId, address member);
+    event GroupDeleted(uint32 indexed groupId, address creator);
+    
+    /**
+     * @notice Sets the ExpenseManager contract address
+     * @param _expenseManager Address of the ExpenseManager contract
+     */
+    function setExpenseManager(address _expenseManager) external {
+        require(address(expenseManager) == address(0), "ExpenseManager already set");
+        require(_expenseManager != address(0), "Invalid ExpenseManager address");
+        expenseManager = IExpenseManager(_expenseManager);
+    }
     
     /**
      * @notice Creates a new group with the given name and initial members
@@ -108,12 +130,75 @@ contract GroupManager {
         return _groupIdCounter;
     }
 
+    /**
+     * @notice Allows a user to leave a group, only if all debts are settled
+     * @param groupId The ID of the group to leave
+     */
+    function leaveGroup(uint32 groupId) external {
+        require(groups[groupId].exists, "Group does not exist");
+        require(isGroupMember[groupId][msg.sender], "Not a group member");
+        require(groups[groupId].creator != msg.sender, "Creator cannot leave group, use deleteGroup instead");
+        
+        // Check if ExpenseManager is set before checking debts
+        if (address(expenseManager) != address(0)) {
+            // Verify that the user has no outstanding debts
+            address[] memory groupMembers = groups[groupId].members;
+            for (uint16 i = 0; i < groupMembers.length; i++) {
+                address member = groupMembers[i];
+                if (member != msg.sender) {
+                    require(expenseManager.getDebt(groupId, msg.sender, member) == 0, "Outstanding debts to settle");
+                    require(expenseManager.getDebt(groupId, member, msg.sender) == 0, "Outstanding credits to collect");
+                }
+            }
+        }
+        
+        // Remove user from group members array
+        address[] storage members = groups[groupId].members;
+        for (uint16 i = 0; i < members.length; i++) {
+            if (members[i] == msg.sender) {
+                // Replace with last element and pop
+                members[i] = members[members.length - 1];
+                members.pop();
+                break;
+            }
+        }
+        
+        // Update membership mapping
+        isGroupMember[groupId][msg.sender] = false;
+        
+        emit MemberLeft(groupId, msg.sender);
+    }
 
-    //TODO: function to allow users to leave a group, only if all debts are settled
-
-
-    //TODO: function to delete a group, only by the creator and if all debts are settled
-
-
-    //TODO: function to get group details, including name, creator, and member count so we can display it in the UI and allow users to search for groups
+    /**
+     * @notice Deletes a group, only by the creator and if all debts are settled
+     * @param groupId The ID of the group to delete
+     */
+    function deleteGroup(uint32 groupId) external {
+        require(groups[groupId].exists, "Group does not exist");
+        require(groups[groupId].creator == msg.sender, "Only creator can delete group");
+        
+        // Check if ExpenseManager is set before checking debts
+        if (address(expenseManager) != address(0)) {
+            // Verify that no debts exist between any group members
+            address[] memory groupMembers = groups[groupId].members;
+            for (uint16 i = 0; i < groupMembers.length; i++) {
+                for (uint16 j = 0; j < groupMembers.length; j++) {
+                    if (i != j) {
+                        require(expenseManager.getDebt(groupId, groupMembers[i], groupMembers[j]) == 0, "Outstanding debts in group");
+                    }
+                }
+            }
+        }
+        
+        // Clear group members mapping
+        address[] memory membersToRemove = groups[groupId].members;
+        for (uint16 i = 0; i < membersToRemove.length; i++) {
+            isGroupMember[groupId][membersToRemove[i]] = false;
+        }
+        
+        // Mark group as non-existent
+        groups[groupId].exists = false;
+        
+        emit GroupDeleted(groupId, msg.sender);
+    }
 }

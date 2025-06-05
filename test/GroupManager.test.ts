@@ -1,6 +1,15 @@
 import { expect } from 'chai';
+import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
-import { deployContractsSetup, createGroupWithMembers } from './helpers';
+import {
+  deployContractsSetup,
+  createGroupWithMembers,
+  addExpense,
+  settleDebt,
+  mintTokens,
+  approveTokens,
+  SplitMethod,
+} from './helpers';
 
 /**
  * @title GroupManager Tests
@@ -88,6 +97,215 @@ describe('GroupManager', function () {
       await expect(groupManager.connect(alice).joinGroup(0)).to.be.revertedWith(
         'Already a member'
       );
+    });
+  });
+  describe('Group deletion and leaving', function () {
+    it('should prevent leaving group if user has outstanding debts', async function () {
+      const { groupManager, expenseManager, owner, alice, bob } =
+        await loadFixture(deployContractsSetup);
+
+      // Set up expense manager
+      await groupManager.setExpenseManager(expenseManager.target);
+
+      const groupId = await createGroupWithMembers(groupManager, owner, [
+        alice,
+        bob,
+      ]);
+
+      // Add an expense where alice owes money
+      await addExpense(
+        expenseManager,
+        owner,
+        groupId,
+        ethers.parseEther('60'),
+        'Dinner',
+        SplitMethod.EQUAL,
+        [owner.address, alice.address, bob.address]
+      );
+
+      // Alice tries to leave but has outstanding debt
+      await expect(
+        groupManager.connect(alice).leaveGroup(groupId)
+      ).to.be.revertedWith('Outstanding debts to settle');
+    });
+
+    it('should allow leaving after settling all debts', async function () {
+      const { groupManager, expenseManager, trustToken, owner, alice, bob } =
+        await loadFixture(deployContractsSetup);
+
+      // Set up expense manager
+      await groupManager.setExpenseManager(expenseManager.target);
+
+      const groupId = await createGroupWithMembers(groupManager, owner, [
+        alice,
+        bob,
+      ]);
+
+      // Add an expense where alice owes money
+      await addExpense(
+        expenseManager,
+        owner,
+        groupId,
+        ethers.parseEther('60'),
+        'Dinner',
+        SplitMethod.EQUAL,
+        [owner.address, alice.address, bob.address]
+      );
+
+      // Alice settles her debt
+      await mintTokens(trustToken, alice, ethers.parseEther('20'));
+      await approveTokens(
+        trustToken,
+        alice,
+        expenseManager.target.toString(),
+        ethers.parseEther('20')
+      );
+      await settleDebt(
+        expenseManager,
+        alice,
+        groupId,
+        owner.address,
+        ethers.parseEther('20')
+      );
+
+      // Now Alice can leave
+      await expect(groupManager.connect(alice).leaveGroup(groupId))
+        .to.emit(groupManager, 'MemberLeft')
+        .withArgs(groupId, alice.address);
+    });
+
+    it('should prevent creator from leaving group', async function () {
+      const { groupManager, owner, alice } =
+        await loadFixture(deployContractsSetup);
+
+      const groupId = await createGroupWithMembers(groupManager, owner, [
+        alice,
+      ]);
+
+      // Owner (creator) tries to leave
+      await expect(
+        groupManager.connect(owner).leaveGroup(groupId)
+      ).to.be.revertedWith(
+        'Creator cannot leave group, use deleteGroup instead'
+      );
+    });
+
+    it('should fail leave if user is not a group member', async function () {
+      const { groupManager, owner, alice, bob } =
+        await loadFixture(deployContractsSetup);
+
+      const groupId = await createGroupWithMembers(groupManager, owner, [
+        alice,
+      ]);
+
+      // Bob (not a member) tries to leave
+      await expect(
+        groupManager.connect(bob).leaveGroup(groupId)
+      ).to.be.revertedWith('Not a group member');
+    });
+
+    it('should prevent deletion if debts exist in group', async function () {
+      const { groupManager, expenseManager, owner, alice, bob } =
+        await loadFixture(deployContractsSetup);
+
+      // Set up expense manager
+      await groupManager.setExpenseManager(expenseManager.target);
+
+      const groupId = await createGroupWithMembers(groupManager, owner, [
+        alice,
+        bob,
+      ]);
+
+      // Add an expense creating debts
+      await addExpense(
+        expenseManager,
+        owner,
+        groupId,
+        ethers.parseEther('60'),
+        'Dinner',
+        SplitMethod.EQUAL,
+        [owner.address, alice.address, bob.address]
+      );
+
+      // Owner tries to delete but debts exist
+      await expect(
+        groupManager.connect(owner).deleteGroup(groupId)
+      ).to.be.revertedWith('Outstanding debts in group');
+    });
+
+    it('should allow deletion after all debts are settled', async function () {
+      const { groupManager, expenseManager, trustToken, owner, alice, bob } =
+        await loadFixture(deployContractsSetup);
+
+      // Set up expense manager
+      await groupManager.setExpenseManager(expenseManager.target);
+
+      const groupId = await createGroupWithMembers(groupManager, owner, [
+        alice,
+        bob,
+      ]);
+
+      // Add an expense creating debts
+      await addExpense(
+        expenseManager,
+        owner,
+        groupId,
+        ethers.parseEther('60'),
+        'Dinner',
+        SplitMethod.EQUAL,
+        [owner.address, alice.address, bob.address]
+      );
+
+      // Settle all debts
+      await mintTokens(trustToken, alice, ethers.parseEther('20'));
+      await approveTokens(
+        trustToken,
+        alice,
+        expenseManager.target.toString(),
+        ethers.parseEther('20')
+      );
+      await settleDebt(
+        expenseManager,
+        alice,
+        groupId,
+        owner.address,
+        ethers.parseEther('20')
+      );
+
+      await mintTokens(trustToken, bob, ethers.parseEther('20'));
+      await approveTokens(
+        trustToken,
+        bob,
+        expenseManager.target.toString(),
+        ethers.parseEther('20')
+      );
+      await settleDebt(
+        expenseManager,
+        bob,
+        groupId,
+        owner.address,
+        ethers.parseEther('20')
+      );
+
+      // Now owner can delete
+      await expect(groupManager.connect(owner).deleteGroup(groupId))
+        .to.emit(groupManager, 'GroupDeleted')
+        .withArgs(groupId, owner.address);
+    });
+
+    it('should prevent non-creator from deleting group', async function () {
+      const { groupManager, owner, alice, bob } =
+        await loadFixture(deployContractsSetup);
+
+      const groupId = await createGroupWithMembers(groupManager, owner, [
+        alice,
+        bob,
+      ]);
+
+      // Alice (not creator) tries to delete
+      await expect(
+        groupManager.connect(alice).deleteGroup(groupId)
+      ).to.be.revertedWith('Only creator can delete group');
     });
   });
 });
