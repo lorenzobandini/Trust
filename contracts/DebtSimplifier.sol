@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.24;
 
-import "./GroupManager.sol";
-import "./ExpenseManager.sol";
+import { GroupManager } from "./GroupManager.sol";
+import { ExpenseManager } from "./ExpenseManager.sol";
 
 /**
  * @title DebtSimplifier
@@ -33,6 +33,10 @@ contract DebtSimplifier {
         expenseManager = ExpenseManager(_expenseManager);
     }
     
+    // TODO: naming convention groupManager → GROUP_MANAGER, expenseManager → EXPENSE_MANAGER
+    // Constructor with address validation
+    // Modifier for "Not group member"
+
     /**
      * @notice Simplifies the debt graph for a group using the greedy algorithm
      * @param groupId The ID of the group to simplify debts for
@@ -45,7 +49,7 @@ contract DebtSimplifier {
         address[] memory newCreditors,
         uint256[] memory newAmounts
     ) {
-        require(groupManager.isGroupMember(groupId, msg.sender), "Not a group member");
+        require(groupManager.isGroupMember(groupId, msg.sender), "Not group member");
         
         // Get all group members
         address[] memory members = groupManager.getGroupMembers(groupId);

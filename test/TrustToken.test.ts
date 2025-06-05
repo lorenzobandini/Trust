@@ -31,7 +31,7 @@ describe('TrustToken', function () {
 
       await expect(
         trustToken.connect(owner).mint({ value: 0 })
-      ).to.be.revertedWith('Amount must be greater than 0');
+      ).to.be.revertedWith('Invalid amount');
     });
   });
 

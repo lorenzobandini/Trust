@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title TrustToken
@@ -21,7 +21,7 @@ contract TrustToken is ERC20, Ownable {
     
     // Modifiers
     modifier validAmount(uint256 amount) {
-        require(amount > 0, "Amount must be greater than 0");
+        require(amount > 0, "Invalid amount");
         _;
     }
     
@@ -36,7 +36,7 @@ contract TrustToken is ERC20, Ownable {
      */
     function mint() external payable validAmount(msg.value) {
         uint256 tokenAmountFull = msg.value * MINT_RATE;
-        require(tokenAmountFull <= type(uint128).max, "Mint amount exceeds maximum limit");
+        require(tokenAmountFull <= type(uint128).max, "Mint limit exceeded");
         uint128 tokenAmount = uint128(tokenAmountFull);
         
         _mint(msg.sender, tokenAmount);
@@ -49,9 +49,9 @@ contract TrustToken is ERC20, Ownable {
      */
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
-        require(balance <= type(uint128).max, "Balance exceeds maximum limit");
+        require(balance <= type(uint128).max, "Balance limit exceeded");
         uint128 safeBalance = uint128(balance);
-        require(safeBalance > 0, "No Ether to withdraw");
+        require(safeBalance > 0, "No Ether");
         
         (bool success, ) = owner().call{value: safeBalance}("");
         require(success, "Withdrawal failed");

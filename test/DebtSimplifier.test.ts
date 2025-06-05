@@ -26,7 +26,7 @@ describe('DebtSimplifier', function () {
 
       await expect(
         debtSimplifier.connect(bob).simplifyDebts(groupId)
-      ).to.be.revertedWith('Not a group member');
+      ).to.be.revertedWith('Not group member');
     });
 
     /**

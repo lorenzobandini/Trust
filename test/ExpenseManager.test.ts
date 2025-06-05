@@ -142,7 +142,7 @@ describe('ExpenseManager', function () {
           participants,
           splitValues
         )
-      ).to.be.revertedWith('Participants and split values length mismatch');
+      ).to.be.revertedWith('Length mismatch');
     });
 
     /**
@@ -171,7 +171,7 @@ describe('ExpenseManager', function () {
           participants,
           splitValues
         )
-      ).to.be.revertedWith('Percentages must sum to 100');
+      ).to.be.revertedWith('Percentage sum != 100');
     });
 
     /**
@@ -200,7 +200,7 @@ describe('ExpenseManager', function () {
           participants,
           splitValues
         )
-      ).to.be.revertedWith('Percentage must be between 0 and 100');
+      ).to.be.revertedWith('Invalid percentage');
     });
   });
 
@@ -340,7 +340,7 @@ describe('ExpenseManager', function () {
           alice.address.toString(),
           ethers.parseEther('20')
         )
-      ).to.be.revertedWith('Cannot settle debt with yourself');
+      ).to.be.revertedWith('Cannot pay yourself');
     });
   });
 

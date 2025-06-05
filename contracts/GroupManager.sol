@@ -26,7 +26,7 @@ contract GroupManager {
     IExpenseManager public expenseManager;
     
     // Address of the contract owner (for access control)
-    address public immutable owner;
+    address public immutable OWNER;
     
     // Structure to store group information
     struct Group {
@@ -53,17 +53,17 @@ contract GroupManager {
     
     // Modifiers
     modifier groupExists(uint32 groupId) {
-        require(groups[groupId].exists, "Group does not exist");
+        require(groups[groupId].exists, "Group not found");
         _;
     }
     
     modifier onlyGroupMember(uint32 groupId) {
-        require(isGroupMember[groupId][msg.sender], "Not a group member");
+        require(isGroupMember[groupId][msg.sender], "Not group member");
         _;
     }
     
     modifier onlyGroupCreator(uint32 groupId) {
-        require(groups[groupId].creator == msg.sender, "Only creator can perform this action");
+        require(groups[groupId].creator == msg.sender, "Not group creator");
         _;
     }
     
@@ -73,12 +73,12 @@ contract GroupManager {
     }
     
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner can call this function");
+        require(msg.sender == OWNER, "Not owner");
         _;
     }
     
     constructor() {
-        owner = msg.sender;
+        OWNER = msg.sender;
     }
     
     /**
@@ -86,7 +86,7 @@ contract GroupManager {
      * @param _expenseManager Address of the ExpenseManager contract
      */
     function setExpenseManager(address _expenseManager) external onlyOwner validAddress(_expenseManager) {
-        require(address(expenseManager) == address(0), "ExpenseManager already set");
+        require(address(expenseManager) == address(0), "Already set");
         expenseManager = IExpenseManager(_expenseManager);
     }
     
@@ -97,9 +97,9 @@ contract GroupManager {
      * @return groupId The ID of the newly created group
      */
     function createGroup(string memory name, address[] memory initialMembers) external returns (uint32) {
-        require(bytes(name).length > 0, "Group name cannot be empty");
-        require(bytes(name).length <= 32, "Group name too long");
-        require(initialMembers.length < MAX_GROUP_SIZE, "Too many initial members");
+        require(bytes(name).length > 0, "Empty name");
+        require(bytes(name).length <= 32, "Name too long");
+        require(initialMembers.length < MAX_GROUP_SIZE, "Too many members");
         
         uint32 groupId = _groupIdCounter++;
         
@@ -116,9 +116,9 @@ contract GroupManager {
         // Add initial members
         for (uint8 i = 0; i < initialMembers.length; i++) {
             address member = initialMembers[i];
-            require(member != address(0), "Invalid member address");
-            require(!isGroupMember[groupId][member], "Member already in group");
-            require(member != msg.sender, "Creator cannot be added as initial member");
+            require(member != address(0), "Invalid member");
+            require(!isGroupMember[groupId][member], "Member exists");
+            require(member != msg.sender, "Creator auto-added");
             
             newGroup.members.push(member);
             isGroupMember[groupId][member] = true;
@@ -164,7 +164,7 @@ contract GroupManager {
      * @param groupId The ID of the group to leave
      */
     function leaveGroup(uint32 groupId) external groupExists(groupId) onlyGroupMember(groupId) {
-        require(groups[groupId].creator != msg.sender, "Creator cannot leave group, use deleteGroup instead");
+        require(groups[groupId].creator != msg.sender, "Creator use deleteGroup");
         
         // Check if ExpenseManager is set before checking debts
         if (address(expenseManager) != address(0)) {
@@ -173,8 +173,8 @@ contract GroupManager {
             for (uint16 i = 0; i < groupMembers.length; i++) {
                 address member = groupMembers[i];
                 if (member != msg.sender) {
-                    require(expenseManager.getDebt(groupId, msg.sender, member) == 0, "Outstanding debts to settle");
-                    require(expenseManager.getDebt(groupId, member, msg.sender) == 0, "Outstanding credits to collect");
+                    require(expenseManager.getDebt(groupId, msg.sender, member) == 0, "Has debts");
+                    require(expenseManager.getDebt(groupId, member, msg.sender) == 0, "Has credits");
                 }
             }
         }
@@ -208,7 +208,7 @@ contract GroupManager {
             for (uint16 i = 0; i < groupMembers.length; i++) {
                 for (uint16 j = 0; j < groupMembers.length; j++) {
                     if (i != j) {
-                        require(expenseManager.getDebt(groupId, groupMembers[i], groupMembers[j]) == 0, "Unpaid debts in group");
+                        require(expenseManager.getDebt(groupId, groupMembers[i], groupMembers[j]) == 0, "Has debts");
                     }
                 }
             }

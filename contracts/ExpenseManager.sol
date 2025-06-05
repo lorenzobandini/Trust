@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.24;
 
-import "./GroupManager.sol";
-import "./TrustToken.sol";
+import {GroupManager} from "./GroupManager.sol";
+import {TrustToken} from "./TrustToken.sol";
 
 /**
  * @title ExpenseManager
@@ -16,8 +16,8 @@ import "./TrustToken.sol";
  * - Payment settlement: handles token-based payments and adjusts the debt graph.
  */
 contract ExpenseManager {
-    GroupManager public immutable groupManager;
-    TrustToken public immutable trustToken;
+    GroupManager public immutable GROUP_MANAGER;
+    TrustToken public immutable TRUST_TOKEN;
     
     // Enum for different split methods
     enum SplitMethod { EQUAL, EXACT, PERCENTAGE }
@@ -49,12 +49,12 @@ contract ExpenseManager {
     
     // Modifiers
     modifier onlyGroupMember(uint32 groupId) {
-        require(groupManager.isGroupMember(groupId, msg.sender), "Not a group member");
+        require(GROUP_MANAGER.isGroupMember(groupId, msg.sender), "Not group member");
         _;
     }
     
     modifier validAmount(uint256 amount) {
-        require(amount > 0, "Amount must be greater than 0");
+        require(amount > 0, "Invalid amount");
         _;
     }
     
@@ -64,8 +64,8 @@ contract ExpenseManager {
     }
     
     constructor(address _groupManager, address _trustToken) {
-        groupManager = GroupManager(_groupManager);
-        trustToken = TrustToken(_trustToken);
+        GROUP_MANAGER = GroupManager(_groupManager);
+        TRUST_TOKEN = TrustToken(_trustToken);
     }
     
     /**
@@ -85,31 +85,31 @@ contract ExpenseManager {
         address[] memory participants,
         uint256[] memory splitValues
     ) external onlyGroupMember(groupId) validAmount(amount) {
-        require(participants.length > 0, "Must have at least one participant");
+        require(participants.length > 0, "No participants");
         
         // Verify all participants are group members
         for (uint16 i = 0; i < participants.length; i++) {
-            require(groupManager.isGroupMember(groupId, participants[i]), "Invalid participant");
+            require(GROUP_MANAGER.isGroupMember(groupId, participants[i]), "Invalid participant");
         }
         
         // Verify split values based on method
         if (splitMethod == SplitMethod.EQUAL) {
-            require(splitValues.length == 0, "Equal split does not need split values");
+            require(splitValues.length == 0, "No split values needed");
         } else if (splitMethod == SplitMethod.EXACT) {
-            require(participants.length == splitValues.length, "Participants and split values length mismatch");
+            require(participants.length == splitValues.length, "Length mismatch");
             uint256 total = 0;
             for (uint16 i = 0; i < splitValues.length; i++) {
                 total += splitValues[i];
             }
-            require(total == amount, "Split values must sum to total amount");
+            require(total == amount, "Split sum mismatch");
         } else if (splitMethod == SplitMethod.PERCENTAGE) {
-            require(participants.length == splitValues.length, "Participants and split values length mismatch");
+            require(participants.length == splitValues.length, "Length mismatch");
             uint256 total = 0;
             for (uint16 i = 0; i < splitValues.length; i++) {
-                require(splitValues[i] <= 100, "Percentage must be between 0 and 100");
+                require(splitValues[i] <= 100, "Invalid percentage");
                 total += splitValues[i];
             }
-            require(total == 100, "Percentages must sum to 100");
+            require(total == 100, "Percentage sum != 100");
         }
         
         // Create new expense
@@ -138,12 +138,12 @@ contract ExpenseManager {
      * @param amount The amount to settle
      */
     function settleDebt(uint32 groupId, address creditor, uint256 amount) external onlyGroupMember(groupId) validAddress(creditor) validAmount(amount) {
-        require(groupManager.isGroupMember(groupId, creditor), "Creditor not in group");
-        require(msg.sender != creditor, "Cannot settle debt with yourself");
-        require(debts[groupId][msg.sender][creditor] >= amount, "Insufficient debt balance");
+        require(GROUP_MANAGER.isGroupMember(groupId, creditor), "Creditor not in group");
+        require(msg.sender != creditor, "Cannot pay yourself");
+        require(debts[groupId][msg.sender][creditor] >= amount, "Insufficient debt");
         
         // Transfer tokens from debtor to creditor
-        require(trustToken.transferFrom(msg.sender, creditor, amount), "Token transfer failed");
+        require(TRUST_TOKEN.transferFrom(msg.sender, creditor, amount), "Transfer failed");
         
         // Update debt
         debts[groupId][msg.sender][creditor] -= amount;

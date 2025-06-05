@@ -43,7 +43,7 @@ describe('GroupManager', function () {
         await loadFixture(deployContractsSetup);
       await expect(
         groupManager.createGroup('', [alice.address, bob.address])
-      ).to.be.revertedWith('Group name cannot be empty');
+      ).to.be.revertedWith('Empty name');
     });
     /**
      * @notice Ensures that a group cannot be created with duplicate members.
@@ -57,7 +57,7 @@ describe('GroupManager', function () {
           alice.address,
           owner.address,
         ])
-      ).to.be.revertedWith('Member already in group');
+      ).to.be.revertedWith('Member exists');
     });
   });
 
@@ -84,7 +84,7 @@ describe('GroupManager', function () {
     it('should fail when non-member tries to join a non-existent group', async function () {
       const { groupManager, bob } = await loadFixture(deployContractsSetup);
       await expect(groupManager.connect(bob).joinGroup(999)).to.be.revertedWith(
-        'Group does not exist'
+        'Group not found'
       );
     });
     /**
@@ -126,7 +126,7 @@ describe('GroupManager', function () {
       // Alice tries to leave but has outstanding debt
       await expect(
         groupManager.connect(alice).leaveGroup(groupId)
-      ).to.be.revertedWith('Outstanding debts to settle');
+      ).to.be.revertedWith('Has debts');
     });
 
     it('should allow leaving after settling all debts', async function () {
@@ -185,9 +185,7 @@ describe('GroupManager', function () {
       // Owner (creator) tries to leave
       await expect(
         groupManager.connect(owner).leaveGroup(groupId)
-      ).to.be.revertedWith(
-        'Creator cannot leave group, use deleteGroup instead'
-      );
+      ).to.be.revertedWith('Creator use deleteGroup');
     });
 
     it('should fail leave if user is not a group member', async function () {
@@ -201,7 +199,7 @@ describe('GroupManager', function () {
       // Bob (not a member) tries to leave
       await expect(
         groupManager.connect(bob).leaveGroup(groupId)
-      ).to.be.revertedWith('Not a group member');
+      ).to.be.revertedWith('Not group member');
     });
 
     it('should prevent deletion if debts exist in group', async function () {
@@ -230,7 +228,7 @@ describe('GroupManager', function () {
       // Owner tries to delete but debts exist
       await expect(
         groupManager.connect(owner).deleteGroup(groupId)
-      ).to.be.revertedWith('Unpaid debts in group');
+      ).to.be.revertedWith('Has debts');
     });
 
     it('should allow deletion after all debts are settled', async function () {
@@ -305,7 +303,7 @@ describe('GroupManager', function () {
       // Alice (not creator) tries to delete
       await expect(
         groupManager.connect(alice).deleteGroup(groupId)
-      ).to.be.revertedWith('Only creator can perform this action');
+      ).to.be.revertedWith('Not group creator');
     });
   });
 });
