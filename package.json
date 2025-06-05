@@ -6,11 +6,13 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "test:coverage": "hardhat coverage",
     "deploy": "hardhat run scripts/deploy.ts",
     "console": "hardhat console",
+    "lint": "pnpm run lint:ts && pnpm run lint:sol",
     "lint:ts": "eslint 'ignition/modules/**/*.ts' 'test/**/*.ts'",
-    "format": "prettier --write 'ignition/modules/**/*.ts' 'test/**/*.ts'",
     "lint:sol": "solhint 'contracts/**/*.sol'",
+    "format": "prettier --write 'ignition/modules/**/*.ts' 'test/**/*.ts'",
     "prepare": "husky"
   },
   "keywords": [],
