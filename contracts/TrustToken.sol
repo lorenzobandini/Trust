@@ -4,8 +4,6 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-// TODO: TO ALL CONTRACTS use custom errors instead of require statements for better gas efficiency and clarity
-
 /**
  * @title TrustToken
  * @author Lorenzo Bandini
@@ -21,6 +19,12 @@ contract TrustToken is ERC20, Ownable {
     // TODO: Synchronize the change with the actual value of Ether
     uint16 public constant MINT_RATE = 1000;
     
+    // Modifiers
+    modifier validAmount(uint256 amount) {
+        require(amount > 0, "Amount must be greater than 0");
+        _;
+    }
+    
     // Event emitted when tokens are minted
     event TokensMinted(address indexed to, uint128 amount, uint128 ethAmount);
     
@@ -30,9 +34,7 @@ contract TrustToken is ERC20, Ownable {
      * @notice Mints new tokens in exchange for Ether
      * @dev The amount of tokens minted is calculated based on the MINT_RATE
      */
-    function mint() external payable {
-        require(msg.value > 0, "Must send Ether to mint tokens");
-        
+    function mint() external payable validAmount(msg.value) {
         uint256 tokenAmountFull = msg.value * MINT_RATE;
         require(tokenAmountFull <= type(uint128).max, "Mint amount exceeds maximum limit");
         uint128 tokenAmount = uint128(tokenAmountFull);
@@ -55,6 +57,5 @@ contract TrustToken is ERC20, Ownable {
         require(success, "Withdrawal failed");
     }
 
-
-    //TODO: function to allow users to redeem tokens for Ether, all must be syncronized with the change in the state of the system
+    // TODO: function to allow users to redeem tokens for Ether, all must be syncronized with the change in the state of the system
 }

@@ -230,7 +230,7 @@ describe('GroupManager', function () {
       // Owner tries to delete but debts exist
       await expect(
         groupManager.connect(owner).deleteGroup(groupId)
-      ).to.be.revertedWith('Outstanding debts in group');
+      ).to.be.revertedWith('Unpaid debts in group');
     });
 
     it('should allow deletion after all debts are settled', async function () {
@@ -305,7 +305,7 @@ describe('GroupManager', function () {
       // Alice (not creator) tries to delete
       await expect(
         groupManager.connect(alice).deleteGroup(groupId)
-      ).to.be.revertedWith('Only creator can delete group');
+      ).to.be.revertedWith('Only creator can perform this action');
     });
   });
 });

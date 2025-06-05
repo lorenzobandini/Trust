@@ -47,6 +47,22 @@ contract ExpenseManager {
     event ExpenseAdded(uint64 indexed expenseId, uint32 indexed groupId, address payer, uint256 amount);
     event DebtSettled(uint32 indexed groupId, address debtor, address creditor, uint256 amount);
     
+    // Modifiers
+    modifier onlyGroupMember(uint32 groupId) {
+        require(groupManager.isGroupMember(groupId, msg.sender), "Not a group member");
+        _;
+    }
+    
+    modifier validAmount(uint256 amount) {
+        require(amount > 0, "Amount must be greater than 0");
+        _;
+    }
+    
+    modifier validAddress(address addr) {
+        require(addr != address(0), "Invalid address");
+        _;
+    }
+    
     constructor(address _groupManager, address _trustToken) {
         groupManager = GroupManager(_groupManager);
         trustToken = TrustToken(_trustToken);
@@ -68,9 +84,7 @@ contract ExpenseManager {
         SplitMethod splitMethod,
         address[] memory participants,
         uint256[] memory splitValues
-    ) external {
-        require(groupManager.isGroupMember(groupId, msg.sender), "Not a group member");
-        require(amount > 0, "Amount must be greater than 0");
+    ) external onlyGroupMember(groupId) validAmount(amount) {
         require(participants.length > 0, "Must have at least one participant");
         
         // Verify all participants are group members
@@ -123,11 +137,9 @@ contract ExpenseManager {
      * @param creditor The address of the creditor
      * @param amount The amount to settle
      */
-    function settleDebt(uint32 groupId, address creditor, uint256 amount) external {
-        require(groupManager.isGroupMember(groupId, msg.sender), "Not a group member");
+    function settleDebt(uint32 groupId, address creditor, uint256 amount) external onlyGroupMember(groupId) validAddress(creditor) validAmount(amount) {
         require(groupManager.isGroupMember(groupId, creditor), "Creditor not in group");
         require(msg.sender != creditor, "Cannot settle debt with yourself");
-        require(amount > 0, "Amount must be greater than 0");
         require(debts[groupId][msg.sender][creditor] >= amount, "Insufficient debt balance");
         
         // Transfer tokens from debtor to creditor

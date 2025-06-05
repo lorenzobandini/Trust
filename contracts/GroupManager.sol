@@ -25,6 +25,9 @@ contract GroupManager {
     // Reference to the ExpenseManager contract
     IExpenseManager public expenseManager;
     
+    // Address of the contract owner (for access control)
+    address public immutable owner;
+    
     // Structure to store group information
     struct Group {
         string name;
@@ -48,13 +51,42 @@ contract GroupManager {
     event MemberLeft(uint32 indexed groupId, address member);
     event GroupDeleted(uint32 indexed groupId, address creator);
     
+    // Modifiers
+    modifier groupExists(uint32 groupId) {
+        require(groups[groupId].exists, "Group does not exist");
+        _;
+    }
+    
+    modifier onlyGroupMember(uint32 groupId) {
+        require(isGroupMember[groupId][msg.sender], "Not a group member");
+        _;
+    }
+    
+    modifier onlyGroupCreator(uint32 groupId) {
+        require(groups[groupId].creator == msg.sender, "Only creator can perform this action");
+        _;
+    }
+    
+    modifier validAddress(address addr) {
+        require(addr != address(0), "Invalid address");
+        _;
+    }
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this function");
+        _;
+    }
+    
+    constructor() {
+        owner = msg.sender;
+    }
+    
     /**
      * @notice Sets the ExpenseManager contract address
      * @param _expenseManager Address of the ExpenseManager contract
      */
-    function setExpenseManager(address _expenseManager) external {
+    function setExpenseManager(address _expenseManager) external onlyOwner validAddress(_expenseManager) {
         require(address(expenseManager) == address(0), "ExpenseManager already set");
-        require(_expenseManager != address(0), "Invalid ExpenseManager address");
         expenseManager = IExpenseManager(_expenseManager);
     }
     
@@ -100,13 +132,11 @@ contract GroupManager {
      * @notice Allows a user to join an existing group
      * @param groupId The ID of the group to join
      */
-    function joinGroup(uint32 groupId) external {
-        Group storage group = groups[groupId];
-        require(group.exists, "Group does not exist");
+    function joinGroup(uint32 groupId) external groupExists(groupId) {
         require(!isGroupMember[groupId][msg.sender], "Already a member");
-        require(group.members.length < MAX_GROUP_SIZE, "Group is full");
+        require(groups[groupId].members.length < MAX_GROUP_SIZE, "Group is full");
         
-        group.members.push(msg.sender);
+        groups[groupId].members.push(msg.sender);
         isGroupMember[groupId][msg.sender] = true;
         
         emit MemberJoined(groupId, msg.sender);
@@ -117,8 +147,7 @@ contract GroupManager {
      * @param groupId The ID of the group
      * @return Array of member addresses
      */
-    function getGroupMembers(uint32 groupId) external view returns (address[] memory) {
-        require(groups[groupId].exists, "Group does not exist");
+    function getGroupMembers(uint32 groupId) external view groupExists(groupId) returns (address[] memory) {
         return groups[groupId].members;
     }
     
@@ -134,9 +163,7 @@ contract GroupManager {
      * @notice Allows a user to leave a group, only if all debts are settled
      * @param groupId The ID of the group to leave
      */
-    function leaveGroup(uint32 groupId) external {
-        require(groups[groupId].exists, "Group does not exist");
-        require(isGroupMember[groupId][msg.sender], "Not a group member");
+    function leaveGroup(uint32 groupId) external groupExists(groupId) onlyGroupMember(groupId) {
         require(groups[groupId].creator != msg.sender, "Creator cannot leave group, use deleteGroup instead");
         
         // Check if ExpenseManager is set before checking debts
@@ -173,10 +200,7 @@ contract GroupManager {
      * @notice Deletes a group, only by the creator and if all debts are settled
      * @param groupId The ID of the group to delete
      */
-    function deleteGroup(uint32 groupId) external {
-        require(groups[groupId].exists, "Group does not exist");
-        require(groups[groupId].creator == msg.sender, "Only creator can delete group");
-        
+    function deleteGroup(uint32 groupId) external groupExists(groupId) onlyGroupCreator(groupId) {
         // Check if ExpenseManager is set before checking debts
         if (address(expenseManager) != address(0)) {
             // Verify that no debts exist between any group members
@@ -184,7 +208,7 @@ contract GroupManager {
             for (uint16 i = 0; i < groupMembers.length; i++) {
                 for (uint16 j = 0; j < groupMembers.length; j++) {
                     if (i != j) {
-                        require(expenseManager.getDebt(groupId, groupMembers[i], groupMembers[j]) == 0, "Outstanding debts in group");
+                        require(expenseManager.getDebt(groupId, groupMembers[i], groupMembers[j]) == 0, "Unpaid debts in group");
                     }
                 }
             }
