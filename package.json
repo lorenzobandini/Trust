@@ -8,7 +8,7 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "test:coverage": "hardhat coverage",
-    "deploy": "hardhat run scripts/deploy.ts",
+    "deploy": "hardhat ignition deploy ignition/modules/TrustDeployment.ts",
     "console": "hardhat console",
     "lint": "pnpm run lint:ts && pnpm run lint:sol",
     "lint:ts": "eslint 'ignition/modules/**/*.ts' 'test/**/*.ts'",
@@ -23,6 +23,7 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
     "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-ignition": "^0.15.11",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.12",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@typechain/hardhat": "^9.1.0",
