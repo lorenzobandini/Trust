@@ -16,6 +16,7 @@ pragma solidity ^0.8.24;
 
 interface IExpenseManager {
     function getDebt(uint32 groupId, address debtor, address creditor) external view returns (uint256);
+    function initializeGroupBalances(uint32 groupId, address[] memory members) external;
 }
 
 contract GroupManager {
@@ -122,6 +123,12 @@ contract GroupManager {
             
             newGroup.members.push(member);
             isGroupMember[groupId][member] = true;
+        }
+        
+        // Initialize balances for all group members if ExpenseManager is set
+        if (address(expenseManager) != address(0)) {
+            address[] memory allMembers = newGroup.members;
+            expenseManager.initializeGroupBalances(groupId, allMembers);
         }
         
         emit GroupCreated(groupId, name, msg.sender);

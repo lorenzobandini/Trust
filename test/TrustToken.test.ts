@@ -107,4 +107,49 @@ describe('TrustToken', function () {
       ).to.be.revertedWithCustomError(trustToken, 'ERC20InsufficientAllowance');
     });
   });
+  describe('Ether Withdrawal', function () {
+    /**
+     * @notice Verifies that the owner can withdraw accumulated Ether from token minting
+     */
+    it('should allow owner to withdraw accumulated Ether', async function () {
+      const { trustToken, owner, alice } =
+        await loadFixture(deployContractsSetup);
+      const mintAmount = ethers.parseEther('1');
+
+      // Alice mints tokens, sending Ether to the contract
+      await mintTokens(trustToken, alice, mintAmount);
+
+      // Check contract has received Ether
+      const contractBalance = await ethers.provider.getBalance(
+        await trustToken.getAddress()
+      );
+      expect(contractBalance).to.equal(mintAmount);
+
+      // Owner withdraws Ether
+      await expect(trustToken.connect(owner).withdraw()).to.not.be.reverted;
+
+      // Check contract balance is now zero
+      const contractBalanceAfter = await ethers.provider.getBalance(
+        await trustToken.getAddress()
+      );
+      expect(contractBalanceAfter).to.equal(0);
+    });
+
+    /**
+     * @notice Ensures non-owners cannot withdraw Ether
+     */
+    it('should fail when non-owner tries to withdraw', async function () {
+      const { trustToken, owner, alice } =
+        await loadFixture(deployContractsSetup);
+      const mintAmount = ethers.parseEther('1');
+
+      // Owner mints tokens to add Ether to contract
+      await mintTokens(trustToken, owner, mintAmount);
+
+      // Alice (non-owner) tries to withdraw
+      await expect(
+        trustToken.connect(alice).withdraw()
+      ).to.be.revertedWithCustomError(trustToken, 'OwnableUnauthorizedAccount');
+    });
+  });
 });

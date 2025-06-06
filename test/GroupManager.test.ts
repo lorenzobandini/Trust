@@ -104,9 +104,6 @@ describe('GroupManager', function () {
       const { groupManager, expenseManager, owner, alice, bob } =
         await loadFixture(deployContractsSetup);
 
-      // Set up expense manager
-      await groupManager.setExpenseManager(expenseManager.target);
-
       const groupId = await createGroupWithMembers(groupManager, owner, [
         alice,
         bob,
@@ -132,9 +129,6 @@ describe('GroupManager', function () {
     it('should allow leaving after settling all debts', async function () {
       const { groupManager, expenseManager, trustToken, owner, alice, bob } =
         await loadFixture(deployContractsSetup);
-
-      // Set up expense manager
-      await groupManager.setExpenseManager(expenseManager.target);
 
       const groupId = await createGroupWithMembers(groupManager, owner, [
         alice,
@@ -206,9 +200,6 @@ describe('GroupManager', function () {
       const { groupManager, expenseManager, owner, alice, bob } =
         await loadFixture(deployContractsSetup);
 
-      // Set up expense manager
-      await groupManager.setExpenseManager(expenseManager.target);
-
       const groupId = await createGroupWithMembers(groupManager, owner, [
         alice,
         bob,
@@ -234,9 +225,6 @@ describe('GroupManager', function () {
     it('should allow deletion after all debts are settled', async function () {
       const { groupManager, expenseManager, trustToken, owner, alice, bob } =
         await loadFixture(deployContractsSetup);
-
-      // Set up expense manager
-      await groupManager.setExpenseManager(expenseManager.target);
 
       const groupId = await createGroupWithMembers(groupManager, owner, [
         alice,

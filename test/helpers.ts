@@ -54,6 +54,12 @@ export async function deployContractsSetup(): Promise<TestContext> {
     await expenseManager.getAddress()
   );
 
+  // Set up contract connections
+  await groupManager.setExpenseManager(await expenseManager.getAddress());
+  await expenseManager.setDebtSimplifierContract(
+    await debtSimplifier.getAddress()
+  );
+
   return {
     trustToken,
     groupManager,
@@ -197,7 +203,7 @@ export async function simplifyDebts(
   signer: SignerWithAddress,
   groupId: number
 ): Promise<[string[], string[], bigint[]]> {
-  return await debtSimplifier.connect(signer).simplifyDebts(groupId);
+  return await debtSimplifier.connect(signer).simplifyDebts.staticCall(groupId);
 }
 
 /**
