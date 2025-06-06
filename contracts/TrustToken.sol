@@ -16,8 +16,10 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  */
 contract TrustToken is ERC20, Ownable {
     // Rate of tokens per Ether (1 ETH = 1000 TRUST tokens)
-    // TODO: Synchronize the change with the actual value of Ether
     uint16 public constant MINT_RATE = 1000;
+    
+    // Redemption fee percentage (2%)
+    uint16 public constant REDEMPTION_FEE_PERCENT = 2;
     
     // Modifiers
     modifier validAmount(uint256 amount) {
@@ -28,11 +30,13 @@ contract TrustToken is ERC20, Ownable {
     // Event emitted when tokens are minted
     event TokensMinted(address indexed to, uint128 amount, uint128 ethAmount);
     
+    // Event emitted when tokens are redeemed
+    event TokensRedeemed(address indexed from, uint128 tokenAmount, uint128 ethAmount, uint128 feeAmount);
+    
     constructor() ERC20("TRUST Token", "TRUST") Ownable(msg.sender) {}
     
     /**
      * @notice Mints new tokens in exchange for Ether
-     * @dev The amount of tokens minted is calculated based on the MINT_RATE
      */
     function mint() external payable validAmount(msg.value) {
         uint256 tokenAmountFull = msg.value * MINT_RATE;
@@ -57,5 +61,38 @@ contract TrustToken is ERC20, Ownable {
         require(success, "Withdrawal failed");
     }
 
-    // TODO: function to allow users to redeem tokens for Ether, all must be syncronized with the change in the state of the system
+    /**
+     * @notice Allows users to redeem tokens for Ether with a 2% fee
+     * @param tokenAmount The amount of tokens to redeem
+     * @dev Burns the tokens and sends Ether minus fee to the user
+     */
+    function redeem(uint256 tokenAmount) external validAmount(tokenAmount) {
+        require(tokenAmount <= balanceOf(msg.sender), "Insufficient token balance");
+        require(tokenAmount <= type(uint128).max, "Redeem limit exceeded");
+        
+        uint128 tokenAmountSafe = uint128(tokenAmount);
+        
+        // Calculate Ether amount before fee
+        uint256 ethAmountFull = tokenAmount / MINT_RATE;
+        require(ethAmountFull > 0, "Token amount too small");
+        require(ethAmountFull <= type(uint128).max, "Ether amount too large");
+        
+        uint128 ethAmountBeforeFee = uint128(ethAmountFull);
+        
+        // Calculate fee (2% of Ether amount)
+        uint128 feeAmount = (ethAmountBeforeFee * REDEMPTION_FEE_PERCENT) / 100;
+        uint128 ethToUser = ethAmountBeforeFee - feeAmount;
+        
+        // Check contract has enough Ether (full amount including what stays as fee)
+        require(address(this).balance >= ethAmountBeforeFee, "Insufficient contract balance");
+        
+        // Burn tokens from user
+        _burn(msg.sender, tokenAmountSafe);
+        
+        // Send Ether to user (minus fee)
+        (bool success, ) = msg.sender.call{value: ethToUser}("");
+        require(success, "Ether transfer failed");
+        
+        emit TokensRedeemed(msg.sender, tokenAmountSafe, ethToUser, feeAmount);
+    }
 }

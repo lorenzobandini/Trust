@@ -152,4 +152,61 @@ describe('TrustToken', function () {
       ).to.be.revertedWithCustomError(trustToken, 'OwnableUnauthorizedAccount');
     });
   });
+
+  describe('Token Redemption', function () {
+    /**
+     * @notice Verifies that users can redeem tokens for Ether with 2% fee
+     */
+    it('should allow users to redeem tokens for Ether with fee', async function () {
+      const { trustToken, alice } = await loadFixture(deployContractsSetup);
+      const mintAmount = ethers.parseEther('1');
+      const tokenAmount = ethers.parseEther('1000'); // 1000 tokens
+
+      // Alice mints tokens
+      await mintTokens(trustToken, alice, mintAmount);
+
+      // Get Alice's initial Ether balance
+      const aliceBalanceBefore = await ethers.provider.getBalance(
+        alice.address
+      );
+
+      // Alice redeems tokens
+      const tx = await trustToken.connect(alice).redeem(tokenAmount);
+      const receipt = await tx.wait();
+      const gasUsed = receipt!.gasUsed * receipt!.gasPrice;
+
+      // Check Alice's token balance is now zero
+      const aliceTokenBalance = await trustToken.balanceOf(alice.address);
+      expect(aliceTokenBalance).to.equal(0);
+
+      // Calculate expected Ether received (1 ETH - 2% fee = 0.98 ETH)
+      const expectedEthAmount = ethers.parseEther('1');
+      const expectedFee = (expectedEthAmount * BigInt(2)) / BigInt(100);
+      const expectedEthToUser = expectedEthAmount - expectedFee;
+
+      // Check Alice received correct Ether amount (minus gas costs)
+      const aliceBalanceAfter = await ethers.provider.getBalance(alice.address);
+      const expectedAliceBalance =
+        aliceBalanceBefore + expectedEthToUser - gasUsed;
+      expect(aliceBalanceAfter).to.equal(expectedAliceBalance);
+
+      // Check contract still has the fee
+      const contractBalance = await ethers.provider.getBalance(
+        await trustToken.getAddress()
+      );
+      expect(contractBalance).to.equal(expectedFee);
+    });
+
+    /**
+     * @notice Ensures redemption fails when user has insufficient tokens
+     */
+    it('should fail to redeem more tokens than balance', async function () {
+      const { trustToken, alice } = await loadFixture(deployContractsSetup);
+      const tokenAmount = ethers.parseEther('1000'); // Alice has no tokens
+
+      await expect(
+        trustToken.connect(alice).redeem(tokenAmount)
+      ).to.be.revertedWith('Insufficient token balance');
+    });
+  });
 });
