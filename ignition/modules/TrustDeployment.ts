@@ -15,9 +15,13 @@ const TrustModule = buildModule('TrustModule', (m) => {
 
   // Deploy DebtSimplifier
   const debtSimplifier = m.contract('DebtSimplifier', [
-    expenseManager,
     groupManager,
+    expenseManager,
   ]);
+
+  // Wire the contracts (set-once access control)
+  m.call(groupManager, 'setExpenseManager', [expenseManager]);
+  m.call(expenseManager, 'setDebtSimplifierContract', [debtSimplifier]);
 
   return {
     trustToken,
