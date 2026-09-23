@@ -1,10 +1,14 @@
-import { HardhatUserConfig } from 'hardhat/config';
-import '@nomicfoundation/hardhat-toolbox';
-import '@nomicfoundation/hardhat-ethers';
-import '@typechain/hardhat';
-import 'hardhat-gas-reporter';
+import { defineConfig } from 'hardhat/config';
+import hardhatToolboxMochaEthers from '@nomicfoundation/hardhat-toolbox-mocha-ethers';
+import hardhatIgnitionEthers from '@nomicfoundation/hardhat-ignition-ethers';
+import hardhatNetworkHelpers from '@nomicfoundation/hardhat-network-helpers';
 
-const config: HardhatUserConfig = {
+const config = defineConfig({
+  plugins: [
+    hardhatToolboxMochaEthers,
+    hardhatIgnitionEthers,
+    hardhatNetworkHelpers,
+  ],
   solidity: {
     version: '0.8.28',
     settings: {
@@ -14,16 +18,6 @@ const config: HardhatUserConfig = {
       },
     },
   },
-  typechain: {
-    target: 'ethers-v6',
-  },
-  gasReporter: {
-    currency: 'USD',
-    gasPrice: 20,
-    outputFile: 'gas-report.txt',
-    noColors: true,
-    rst: true,
-  },
-};
+});
 
 export default config;
