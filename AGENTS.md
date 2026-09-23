@@ -1,14 +1,30 @@
 # AGENTS.md
 
+## Toolchain (Hardhat 3, Node ≥ 22.13, ESM)
+
+- `hardhat@3` + `@nomicfoundation/hardhat-toolbox-mocha-ethers` +
+  `hardhat-ignition-ethers` + `hardhat-network-helpers` + `hardhat-typechain`.
+  No `ts-node`, no gas-reporter, no solidity-coverage (H3 has native
+  `--coverage` and `--gas-stats` flags).
+- ESM (`"type": "module"`, tsconfig nodenext): relative imports in tests use
+  `.js` extensions (`./helpers.js`); no global `hre.ethers`.
+- Tests connect per file: `const { ethers, networkHelpers } = await network.create()`
+  in `test/helpers.ts`, which re-exports `ethers` + `loadFixture` for all suites.
+- Contract types are generated to `types/ethers-contracts/` on build; deploy
+  in tests via generated factories (`new TrustToken__factory(owner).deploy()`),
+  because H3 `deployContract` returns untyped `BaseContract`.
+- Regression test for the Ignition module lives in `test/TrustDeployment.test.ts`
+  (constructor order + wiring assertions).
+
 ## Commands (pnpm; CI uses npm)
 
-- `pnpm run compile` — compile contracts
-- `pnpm run test` — full test suite (Hardhat + ethers v6 + TypeScript)
-- `pnpm run test:coverage` — coverage (also runs tests)
-- `pnpm run test:gas` — tests with gas report (`gas-report.txt`)
+- `pnpm run compile` — `hardhat build` (also regenerates `types/`)
+- `pnpm run test` — full suite (Mocha + ethers v6 on H3 connections)
+- `pnpm run test:coverage` — `hardhat test --coverage` (native, no plugin)
+- `pnpm run test:gas` — `hardhat test --gas-stats` (native, Windows-safe)
 - `pnpm run lint` — `eslint` (ignition + test) + `solhint` (contracts)
 - `pnpm run format` — prettier write on ignition + test
-- `pnpm run deploy` — `hardhat ignition deploy ignition/modules/TrustDeployment.ts`
+- `pnpm run deploy` — `hardhat ignition deploy ./ignition/modules/TrustDeployment.ts` (in-memory network by default; add `--network localhost` with `hardhat node` running)
 
 ## Wiring (order matters, set-once)
 

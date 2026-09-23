@@ -5,8 +5,12 @@
 Deploy with Ignition (does everything below in one module):
 
 ```bash
-pnpm run deploy   # hardhat ignition deploy ignition/modules/TrustDeployment.ts
+pnpm run deploy   # hardhat ignition deploy ./ignition/modules/TrustDeployment.ts
 ```
+
+Runs on the in-memory network by default. For a persistent local node
+(frontend dev): `pnpm exec hardhat node`, then append `--network localhost`.
+Covered by regression test `test/TrustDeployment.test.ts`.
 
 Manual order (same as `test/helpers.ts :: deployContractsSetup`):
 
@@ -24,9 +28,9 @@ and `simplifyDebts` reverts (`Not debt simplifier`).
 
 ## Networks
 
-- Local: `pnpm run deploy` (Hardhat network). No mainnet/testnet config yet —
-  add `ignition` network entries + `PRIVATE_KEY` env when Sepolia is needed.
-- Solidity 0.8.28, optimizer runs 200.
+- Local: `pnpm run deploy` (in-memory network). No mainnet/testnet config yet —
+  add network entries + `PRIVATE_KEY`/keystore when Sepolia is needed.
+- Hardhat 3.17, Node ≥ 22.13, ESM. Solidity 0.8.28, optimizer runs 200.
 
 ## Post-deploy checks
 

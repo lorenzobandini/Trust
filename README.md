@@ -62,9 +62,9 @@ ERC-20 token contract for payments:
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
+- Node.js (v22.13 or higher, Hardhat 3 requirement)
 - pnpm package manager
-- Hardhat development environment
+- Hardhat 3 development environment
 
 ### Installation
 
