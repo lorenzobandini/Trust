@@ -25,6 +25,9 @@ jobs:
       - name: Compile contracts
         run: npm run compile
 
+      - name: Lint
+        run: npm run lint
+
       - name: Check code formatting
         run: npm run format -- --check
 
