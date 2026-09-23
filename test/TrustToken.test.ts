@@ -209,4 +209,25 @@ describe('TrustToken', function () {
       ).to.be.revertedWith('Insufficient token balance');
     });
   });
+
+  describe('Ownership Transfer', function () {
+    /**
+     * @notice Ownership must not change until the new owner accepts it
+     */
+    it('should require acceptOwnership before ownership changes', async function () {
+      const { trustToken, owner, alice } =
+        await loadFixture(deployContractsSetup);
+
+      await trustToken.connect(owner).transferOwnership(alice.address);
+
+      // Ownership stays until accepted
+      expect(await trustToken.owner()).to.equal(owner.address);
+      await expect(
+        trustToken.connect(alice).withdraw()
+      ).to.be.revertedWithCustomError(trustToken, 'OwnableUnauthorizedAccount');
+
+      await trustToken.connect(alice).acceptOwnership();
+      expect(await trustToken.owner()).to.equal(alice.address);
+    });
+  });
 });
