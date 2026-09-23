@@ -69,6 +69,7 @@ contract TrustToken is ERC20, Ownable {
     function redeem(uint256 tokenAmount) external validAmount(tokenAmount) {
         require(tokenAmount <= balanceOf(msg.sender), "Insufficient token balance");
         require(tokenAmount <= type(uint128).max, "Redeem limit exceeded");
+        require(tokenAmount % MINT_RATE == 0, "Amount not multiple");
         
         uint128 tokenAmountSafe = uint128(tokenAmount);
         
