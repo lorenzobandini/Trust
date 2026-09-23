@@ -3,6 +3,8 @@ pragma solidity ^0.8.28;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title TrustToken
@@ -14,7 +16,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  * - Token minting: users can mint tokens at a fixed Ether rate.
  * - Payment mechanism: tokens are transferred to settle debts, triggering state updates.
  */
-contract TrustToken is ERC20, Ownable {
+contract TrustToken is ERC20, Ownable2Step, ReentrancyGuard {
     // Rate of tokens per Ether (1 ETH = 1000 TRUST tokens)
     uint16 public constant MINT_RATE = 1000;
     
@@ -38,7 +40,7 @@ contract TrustToken is ERC20, Ownable {
     /**
      * @notice Mints new tokens in exchange for Ether
      */
-    function mint() external payable validAmount(msg.value) {
+    function mint() external payable validAmount(msg.value) nonReentrant {
         uint256 tokenAmountFull = msg.value * MINT_RATE;
         require(tokenAmountFull <= type(uint128).max, "Mint limit exceeded");
         uint128 tokenAmount = uint128(tokenAmountFull);
@@ -51,7 +53,7 @@ contract TrustToken is ERC20, Ownable {
     /**
      * @notice Allows the contract owner to withdraw accumulated Ether
      */
-    function withdraw() external onlyOwner {
+    function withdraw() external onlyOwner nonReentrant {
         uint256 balance = address(this).balance;
         require(balance <= type(uint128).max, "Balance limit exceeded");
         uint128 safeBalance = uint128(balance);
@@ -66,7 +68,7 @@ contract TrustToken is ERC20, Ownable {
      * @param tokenAmount The amount of tokens to redeem
      * @dev Burns the tokens and sends Ether minus fee to the user
      */
-    function redeem(uint256 tokenAmount) external validAmount(tokenAmount) {
+    function redeem(uint256 tokenAmount) external validAmount(tokenAmount) nonReentrant {
         require(tokenAmount <= balanceOf(msg.sender), "Insufficient token balance");
         require(tokenAmount <= type(uint128).max, "Redeem limit exceeded");
         require(tokenAmount % MINT_RATE == 0, "Amount not multiple");

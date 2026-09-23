@@ -11,12 +11,14 @@
 
 ## Reentrancy
 
-- `redeem` burns before the ETH `call` (checks-effects-interactions) but has no
-  `ReentrancyGuard`; same for `mint`/`withdraw`/`settleDebt`. Risk accepted at
-  current size — add `ReentrancyGuard` + `Ownable2Step` before mainnet.
-- `settleDebt` updates state after `transferFrom` (external ERC20 call);
-  with the trusted TRUST token this is safe, with a malicious token address it
-  is not — `TRUST_TOKEN` is immutable so the address is fixed at deploy.
+- `mint`/`redeem`/`withdraw` (`TrustToken`) and `settleDebt` (`ExpenseManager`)
+  carry OZ `nonReentrant` (storage-based guard, no EIP-1153 dependency).
+  `redeem` additionally burns before the ETH `call` (checks-effects-interactions).
+- Ownership is two-step (`Ownable2Step`): `transferOwnership` + `acceptOwnership`.
+  Tested in `test/TrustToken.test.ts` ("Ownership Transfer").
+- `settleDebt` updates state after `transferFrom` but under the guard; with the
+  trusted immutable `TRUST_TOKEN` (plain OZ ERC20, no receiver hooks) there is
+  no callback vector — guard is defense in depth.
 
 ## Dust / conservation
 

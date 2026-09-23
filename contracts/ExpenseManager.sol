@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {GroupManager} from "./GroupManager.sol";
 import {TrustToken} from "./TrustToken.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
  * @title ExpenseManager
@@ -15,7 +16,7 @@ import {TrustToken} from "./TrustToken.sol";
  * - Debt recording: calculates how much each participant owes and updates internal debts.
  * - Payment settlement: handles token-based payments and adjusts the debt graph.
  */
-contract ExpenseManager {
+contract ExpenseManager is ReentrancyGuard {
     GroupManager public immutable GROUP_MANAGER;
     TrustToken public immutable TRUST_TOKEN;
     
@@ -160,7 +161,7 @@ contract ExpenseManager {
      * @param creditor The address of the creditor
      * @param amount The amount to settle
      */
-    function settleDebt(uint32 groupId, address creditor, uint256 amount) external onlyGroupMember(groupId) validAddress(creditor) validAmount(amount) {
+    function settleDebt(uint32 groupId, address creditor, uint256 amount) external onlyGroupMember(groupId) validAddress(creditor) validAmount(amount) nonReentrant {
         require(GROUP_MANAGER.isGroupMember(groupId, creditor), "Creditor not in group");
         require(msg.sender != creditor, "Cannot pay yourself");
         require(debts[groupId][msg.sender][creditor] >= amount, "Insufficient debt");
