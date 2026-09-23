@@ -115,7 +115,7 @@ contract GroupManager {
         isGroupMember[groupId][msg.sender] = true;
 
         // Add initial members
-        for (uint8 i = 0; i < initialMembers.length; i++) {
+        for (uint16 i = 0; i < initialMembers.length; i++) {
             address member = initialMembers[i];
             require(member != address(0), "Invalid member");
             require(!isGroupMember[groupId][member], "Member exists");
