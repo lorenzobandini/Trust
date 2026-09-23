@@ -15,7 +15,7 @@
     "lint:sol": "solhint 'contracts/**/*.sol'",
     "format": "prettier --write 'ignition/modules/**/*.ts' 'test/**/*.ts'",
     "prepare": "husky",
-    "test:gas": "REPORT_GAS=true hardhat test"
+    "test:gas": "cross-env REPORT_GAS=true hardhat test"
   },
   "keywords": [],
   "author": "",
@@ -33,6 +33,7 @@
     "@typescript-eslint/eslint-plugin": "^8.32.1",
     "@typescript-eslint/parser": "^8.32.1",
     "chai": "^4.5.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9.28.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-import": "^2.31.0",
