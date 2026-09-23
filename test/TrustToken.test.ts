@@ -1,7 +1,10 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
-import { deployContractsSetup, mintTokens } from './helpers';
+import {
+  deployContractsSetup,
+  mintTokens,
+  ethers,
+  loadFixture,
+} from './helpers.js';
 
 /**
  * @title TrustToken Tests
@@ -125,8 +128,8 @@ describe('TrustToken', function () {
       );
       expect(contractBalance).to.equal(mintAmount);
 
-      // Owner withdraws Ether
-      await expect(trustToken.connect(owner).withdraw()).to.not.be.reverted;
+      // Owner withdraws Ether (reverts on failure, so success asserts)
+      await trustToken.connect(owner).withdraw();
 
       // Check contract balance is now zero
       const contractBalanceAfter = await ethers.provider.getBalance(

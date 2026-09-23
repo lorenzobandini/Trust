@@ -1,11 +1,22 @@
-import { ethers } from 'hardhat';
-import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
+import { network } from 'hardhat';
 import {
+  TrustToken__factory,
+  GroupManager__factory,
+  ExpenseManager__factory,
+  DebtSimplifier__factory,
+} from '../types/ethers-contracts/index.js';
+import type {
   TrustToken,
   GroupManager,
   ExpenseManager,
   DebtSimplifier,
-} from '../typechain-types';
+} from '../types/ethers-contracts/index.js';
+
+const connection = await network.create();
+export const { ethers, networkHelpers } = connection;
+export const loadFixture = networkHelpers.loadFixture.bind(networkHelpers);
+
+export type Signer = Awaited<ReturnType<typeof ethers.getSigners>>[number];
 
 // Define SplitMethod enum locally to match the contract
 export enum SplitMethod {
@@ -20,10 +31,10 @@ export interface TestContext {
   groupManager: GroupManager;
   expenseManager: ExpenseManager;
   debtSimplifier: DebtSimplifier;
-  owner: SignerWithAddress;
-  alice: SignerWithAddress;
-  bob: SignerWithAddress;
-  charlie: SignerWithAddress;
+  owner: Signer;
+  alice: Signer;
+  bob: Signer;
+  charlie: Signer;
 }
 
 /**
@@ -36,20 +47,16 @@ export async function deployContractsSetup(): Promise<TestContext> {
   const [owner, alice, bob, charlie] = await ethers.getSigners();
 
   // Deploy contracts
-  const TrustToken = await ethers.getContractFactory('TrustToken');
-  const trustToken = await TrustToken.deploy();
+  const trustToken = await new TrustToken__factory(owner).deploy();
 
-  const GroupManager = await ethers.getContractFactory('GroupManager');
-  const groupManager = await GroupManager.deploy();
+  const groupManager = await new GroupManager__factory(owner).deploy();
 
-  const ExpenseManager = await ethers.getContractFactory('ExpenseManager');
-  const expenseManager = await ExpenseManager.deploy(
+  const expenseManager = await new ExpenseManager__factory(owner).deploy(
     await groupManager.getAddress(),
     await trustToken.getAddress()
   );
 
-  const DebtSimplifier = await ethers.getContractFactory('DebtSimplifier');
-  const debtSimplifier = await DebtSimplifier.deploy(
+  const debtSimplifier = await new DebtSimplifier__factory(owner).deploy(
     await groupManager.getAddress(),
     await expenseManager.getAddress()
   );
@@ -82,8 +89,8 @@ export async function deployContractsSetup(): Promise<TestContext> {
  */
 export async function createGroupWithMembers(
   groupManager: GroupManager,
-  _owner: SignerWithAddress,
-  members: SignerWithAddress[]
+  _owner: Signer,
+  members: Signer[]
 ): Promise<number> {
   // Send the transaction to create a new group
   const tx = await groupManager.connect(_owner).createGroup(
@@ -121,7 +128,7 @@ export async function createGroupWithMembers(
  */
 export async function addExpense(
   expenseManager: ExpenseManager,
-  payer: SignerWithAddress,
+  payer: Signer,
   groupId: number,
   amount: bigint,
   description: string,
@@ -150,7 +157,7 @@ export async function addExpense(
  */
 export async function mintTokens(
   trustToken: TrustToken,
-  signer: SignerWithAddress,
+  signer: Signer,
   amount: bigint
 ): Promise<void> {
   await trustToken.connect(signer).mint({ value: amount });
@@ -166,7 +173,7 @@ export async function mintTokens(
  */
 export async function approveTokens(
   trustToken: TrustToken,
-  signer: SignerWithAddress,
+  signer: Signer,
   spender: string,
   amount: bigint
 ): Promise<void> {
@@ -182,7 +189,7 @@ export async function approveTokens(
  */
 export async function settleDebt(
   expenseManager: ExpenseManager,
-  signer: SignerWithAddress,
+  signer: Signer,
   groupId: number,
   creditor: string,
   amount: bigint
@@ -200,7 +207,7 @@ export async function settleDebt(
  */
 export async function simplifyDebts(
   debtSimplifier: DebtSimplifier,
-  signer: SignerWithAddress,
+  signer: Signer,
   groupId: number
 ): Promise<[string[], string[], bigint[]]> {
   return await debtSimplifier.connect(signer).simplifyDebts.staticCall(groupId);

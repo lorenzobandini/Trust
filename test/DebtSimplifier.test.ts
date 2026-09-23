@@ -1,12 +1,12 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import {
   deployContractsSetup,
   createGroupWithMembers,
   addExpense,
   SplitMethod,
-} from './helpers';
+  ethers,
+  loadFixture,
+} from './helpers.js';
 
 /**
  * @title DebtSimplifier Tests

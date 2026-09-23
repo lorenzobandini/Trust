@@ -1,13 +1,13 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
-import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import {
   deployContractsSetup,
   createGroupWithMembers,
   addExpense,
   mintTokens,
   SplitMethod,
-} from './helpers';
+  ethers,
+  loadFixture,
+} from './helpers.js';
 
 /**
  * @title Dust conservation tests (TDD RED)
