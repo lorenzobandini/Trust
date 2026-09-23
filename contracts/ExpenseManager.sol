@@ -189,9 +189,9 @@ contract ExpenseManager {
         
         if (expense.splitMethod == SplitMethod.EQUAL) {
             uint256 share = expense.amount / expense.participants.length;
-            
-            // Update payer's net balance 
-            groupUserNetBalances[groupId][payer] += int256(expense.amount);
+
+            // Credit only the distributed sum; payer absorbs the remainder (dust)
+            groupUserNetBalances[groupId][payer] += int256(share * expense.participants.length);
             
             for (uint16 i = 0; i < expense.participants.length; i++) {
                 address participant = expense.participants[i];
@@ -219,12 +219,19 @@ contract ExpenseManager {
                 }
             }
         } else if (expense.splitMethod == SplitMethod.PERCENTAGE) {
-            // Update payer's net balance
-            groupUserNetBalances[groupId][payer] += int256(expense.amount);
-            
+            // Two-pass: truncated shares first, payer credited only the
+            // distributed sum so the remainder (dust) stays with the payer
+            uint256 distributed = 0;
+            uint256[] memory shares = new uint256[](expense.participants.length);
+            for (uint16 i = 0; i < expense.participants.length; i++) {
+                shares[i] = (expense.amount * expense.splitValues[i]) / 100;
+                distributed += shares[i];
+            }
+            groupUserNetBalances[groupId][payer] += int256(distributed);
+
             for (uint16 i = 0; i < expense.participants.length; i++) {
                 address participant = expense.participants[i];
-                uint256 share = (expense.amount * expense.splitValues[i]) / 100;
+                uint256 share = shares[i];
                 
                 // Update participant's net balance
                 groupUserNetBalances[groupId][participant] -= int256(share);
