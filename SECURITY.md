@@ -1,5 +1,23 @@
 # SECURITY.md
 
+## Static analysis (slither 0.11.6, solc 0.8.28)
+
+Run: `slither . --solc solc-0.8.28 --exclude-dependencies`.
+Baseline: 25 INFO findings, 0 High/Medium. Triage:
+
+- `divide-before-multiply` (`_updateDebts`): intentional — dust to payer,
+  conservation invariant holds (tested).
+- `reentrancy-no-eth`/`benign` (`settleDebt`): mitigated — `nonReentrant` +
+  immutable OZ ERC20 without hooks.
+- `calls-loop`: all calls to trusted sibling contracts, bounded ≤ 50 members.
+- `reentrancy-events`: events after calls to trusted contracts only.
+- `assembly` (array resize), `low-level-calls` (checked ETH `call`),
+  `pragma` (OZ `^0.8.20` compiles under one solc), `naming-convention`
+  (UPPER immutables): accepted style.
+- `missing-inheritance` (`ExpenseManager` vs `IExpenseManager`): deferred,
+  rename-only value.
+- Not in CI (needs Python+solc runners) — run locally before mainnet.
+
 ## Trust model
 
 - Contracts are custodial for ETH (TrustToken holds mint payments) and for
