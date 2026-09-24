@@ -1,77 +1,183 @@
 import { useState } from 'react';
 import { useReadContract, useWriteContract } from 'wagmi';
+import { Plus } from '@phosphor-icons/react';
 import { ADDRESSES, groupManagerAbi } from '../contracts';
-import { TxStatus, btnCls, inputCls } from './TxStatus';
+import { parseAddrList } from '../lib/format';
+import { Card, Empty, Field, Title, TxStatus, btnCls, ghostCls, inputCls } from './ui';
 
 const GM = () => ADDRESSES.groupManager!;
 
-export function Groups() {
-  const { writeContract, data: hash, isPending } = useWriteContract();
-  const [name, setName] = useState('');
-  const [members, setMembers] = useState('');
-  const [groupId, setGroupId] = useState('0');
-
-  const id = BigInt(groupId || '0');
+function GroupRow({
+  index,
+  account,
+  active,
+  onSelect,
+}: {
+  index: number;
+  account: `0x${string}`;
+  active: boolean;
+  onSelect: (id: number) => void;
+}) {
+  const id = BigInt(index);
   const { data: group } = useReadContract({
-    address: GM(),
-    abi: groupManagerAbi,
-    functionName: 'groups',
-    args: [id],
+    address: GM(), abi: groupManagerAbi, functionName: 'groups', args: [id],
     query: { enabled: ADDRESSES.groupManager !== undefined },
   });
-  const { data: memberList } = useReadContract({
-    address: GM(),
-    abi: groupManagerAbi,
-    functionName: 'getGroupMembers',
-    args: [id],
+  const { data: member } = useReadContract({
+    address: GM(), abi: groupManagerAbi, functionName: 'isGroupMember',
+    args: [id, account],
     query: { enabled: ADDRESSES.groupManager !== undefined },
   });
+  const { data: members } = useReadContract({
+    address: GM(), abi: groupManagerAbi, functionName: 'getGroupMembers',
+    args: [id],
+    query: { enabled: ADDRESSES.groupManager !== undefined && member === true },
+  });
+  const { writeContract, data: hash, error, isPending } = useWriteContract();
 
-  const splitAddrs = (s: string) =>
-    s.split(/[\s,]+/).map((a) => a.trim()).filter(Boolean) as `0x${string}`[];
+  if (member !== true) return null;
+  const g = group as unknown as [string, string, unknown, boolean] | undefined;
+  if (!g || g[3] !== true) return null;
+  const [name, creator] = [g[0] as string, g[1] as string];
+  const isCreator = creator.toLowerCase() === account.toLowerCase();
+  const count = ((members as string[] | undefined) ?? []).length;
 
   return (
-    <div className="space-y-6">
-      <section className="space-y-2">
-        <h2 className="font-semibold">Create group</h2>
-        <input className={inputCls} placeholder="Name (≤32 chars)" value={name}
-          onChange={(e) => setName(e.target.value)} />
-        <input className={inputCls} placeholder="Initial members, comma separated 0x…"
-          value={members} onChange={(e) => setMembers(e.target.value)} />
-        <button className={btnCls} disabled={isPending || !name}
-          onClick={() => writeContract({
-            address: GM(), abi: groupManagerAbi, functionName: 'createGroup',
-            args: [name, splitAddrs(members)],
-          })}>
-          Create
-        </button>
-        <TxStatus hash={hash} />
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="font-semibold">Inspect / join / leave</h2>
-        <input className={inputCls} placeholder="Group id" value={groupId}
-          onChange={(e) => setGroupId(e.target.value)} />
-        {Array.isArray(group) && (
-          <p className="text-sm">
-            #{groupId} “{(group[0] as string) || '—'}” creator {group[1] as string}{' '}
-            {(group[3] as boolean) ? '' : '(deleted)'}
-          </p>
-        )}
-        <ul className="text-sm">
-          {((memberList as string[]) ?? []).map((m) => <li key={m}>{m}</li>)}
-        </ul>
-        <div className="flex gap-2">
-          <button className={btnCls} disabled={isPending}
-            onClick={() => writeContract({
-              address: GM(), abi: groupManagerAbi, functionName: 'joinGroup', args: [id],
-            })}>Join</button>
-          <button className={btnCls} disabled={isPending}
-            onClick={() => writeContract({
-              address: GM(), abi: groupManagerAbi, functionName: 'leaveGroup', args: [id],
-            })}>Leave</button>
+    <li
+      className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${
+        active ? 'border-emerald-500 bg-emerald-500/10' : 'border-zinc-800'
+      }`}
+    >
+      <button className="min-w-0 flex-1 text-left" onClick={() => onSelect(index)}>
+        <span className="block truncate font-medium">
+          {name || `Group #${index}`} {isCreator && <span className="text-xs text-zinc-500">(yours)</span>}
+        </span>
+        <span className="block font-mono text-xs text-zinc-500">
+          #{index} · {count} member{count === 1 ? '' : 's'}
+        </span>
+      </button>
+      {active ? (
+        <div className="flex gap-1">
+          <button
+            className={ghostCls} disabled={isPending}
+            title={isCreator ? 'Delete only with no open debts' : 'Leave only with no open debts — settle first'}
+            onClick={() =>
+              writeContract({
+                address: GM(), abi: groupManagerAbi,
+                functionName: isCreator ? 'deleteGroup' : 'leaveGroup',
+                args: [id],
+              })
+            }
+          >
+            {isCreator ? 'Delete' : 'Leave'}
+          </button>
         </div>
-      </section>
+      ) : (
+        <button className={ghostCls} onClick={() => onSelect(index)}>
+          Open
+        </button>
+      )}
+      <TxStatus hash={hash} error={error} />
+    </li>
+  );
+}
+
+export function Groups({
+  account,
+  activeId,
+  onSelect,
+}: {
+  account: `0x${string}` | undefined;
+  activeId: number | null;
+  onSelect: (id: number) => void;
+}) {
+  const { writeContract, data: hash, error, isPending } = useWriteContract();
+  const [name, setName] = useState('');
+  const [members, setMembers] = useState('');
+  const [joinId, setJoinId] = useState('');
+
+  const { data: count } = useReadContract({
+    address: GM(), abi: groupManagerAbi, functionName: 'getGroupCount',
+    query: { enabled: ADDRESSES.groupManager !== undefined },
+  });
+  const n = Number((count as bigint | undefined) ?? 0n);
+  const addrs = parseAddrList(members);
+  const typed = members.split(/[\s,]+/).map((a) => a.trim()).filter(Boolean);
+  const invalid = typed.length - addrs.length;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <Title>Your groups</Title>
+        {!account ? (
+          <Empty text="Connect your wallet to see your groups." />
+        ) : n === 0 ? (
+          <Empty text="No groups yet — create one below." />
+        ) : (
+          <ul className="space-y-2">
+            {Array.from({ length: n }, (_, i) => (
+              <GroupRow key={i} index={i} account={account} active={activeId === i} onSelect={onSelect} />
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-xs text-zinc-500">
+          Tip: click the pencil next to any address to give it a nickname — saved in this browser.
+        </p>
+      </Card>
+
+      <Card>
+        <Title>Create a group</Title>
+        <div className="space-y-3">
+          <Field label="Name (max 32 characters)">
+            <input className={inputCls} value={name} maxLength={32}
+              placeholder="Weekend in Lisbon"
+              onChange={(e) => setName(e.target.value)} />
+          </Field>
+          <Field
+            label="Initial members"
+            hint={invalid > 0 ? `${invalid} address${invalid === 1 ? '' : 'es'} ignored (must be 0x + 40 hex chars). You are added automatically.` : 'Paste wallet addresses, comma separated. You are added automatically.'}
+          >
+            <input className={inputCls} value={members}
+              placeholder="0x…, 0x…"
+              onChange={(e) => setMembers(e.target.value)} />
+          </Field>
+          <div>
+            <button
+              className={btnCls} disabled={isPending || !name.trim()}
+              onClick={() =>
+                writeContract({
+                  address: GM(), abi: groupManagerAbi, functionName: 'createGroup',
+                  args: [name.trim(), addrs],
+                })
+              }
+            >
+              <span className="inline-flex items-center gap-1">
+                <Plus size={16} weight="bold" /> Create group
+              </span>
+            </button>
+            <TxStatus hash={hash} error={error} />
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <Title>Join with an id</Title>
+        <div className="flex gap-2">
+          <input className={inputCls} value={joinId} placeholder="Group id, e.g. 0"
+            onChange={(e) => setJoinId(e.target.value)} />
+          <button
+            className={ghostCls} disabled={isPending || joinId.trim() === ''}
+            onClick={() =>
+              writeContract({
+                address: GM(), abi: groupManagerAbi, functionName: 'joinGroup',
+                args: [BigInt(joinId || '0')],
+              })
+            }
+          >
+            Join
+          </button>
+        </div>
+      </Card>
     </div>
   );
 }
